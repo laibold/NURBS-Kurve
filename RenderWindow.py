@@ -61,7 +61,7 @@ class RenderWindow:
             if self.shiftPressed:
                 self.scene.findClickedPoint(self.currX, self.currY)
             else:
-                self.scene.addControlPoint(self.currX, self.currY)#
+                self.scene.addControlPoint(self.currX, self.currY)
         elif button == glfw.MOUSE_BUTTON_LEFT and action == glfw.RELEASE:
             self.scene.resetClickedPoint()
 
@@ -91,7 +91,6 @@ class RenderWindow:
             glfw.poll_events()
         glfw.terminate()
 
-# main() function
 def main():
     rw = RenderWindow()
     rw.run()
