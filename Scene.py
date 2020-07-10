@@ -4,14 +4,14 @@ from OpenGL.arrays import vbo
 from RenderWindow import *
 
 CURVE_POINT_CHANGE = 5
-DEFAULT_WEIGHT = 1
+DEFAULT_WEIGHT = 2
 
 class Point:
-    def __init__(self, x, y):
+    def __init__(self, x, y, z=1, weight=DEFAULT_WEIGHT):
         self.x = x
         self.y = y
-        self.z = 1
-        self.weight = 1
+        self.z = z
+        self.weight = weight
 
     def increaseWeight(self):
         self.weight += 1
@@ -26,7 +26,10 @@ class Point:
     def getPosList(self):
         return[self.x, self.y]
 
-class Points:
+    def getPosWeightList(self):
+        return[self.x, self.y, self.z]
+
+class PointList:
     def __init__(self):
         self.points = []
 
@@ -53,10 +56,12 @@ class Scene:
     def __init__(self, order, curvePointCount):
         self.order = order
         self.curvePointCount = curvePointCount
-        self.controlPoints = Points()
-        self.curvePoints = Points()
+        self.controlPoints = PointList()
+        self.curvePoints = PointList()
         self.clickedPoint = None
         self.clickedYCoord = 0
+
+        self.curve = []
 
     def addControlPoint(self, x, y):
         self.controlPoints.append(Point(x,y))
@@ -134,10 +139,15 @@ class Scene:
         left_term = self.deboor(i - 1, j - 1, controlpoints, knotvector, t)
         right_term = self.deboor(i, j - 1, controlpoints, knotvector, t)
 
-        x = ((1 - alpha) * left_term.x) + (alpha * right_term.x)
-        y = ((1 - alpha) * left_term.y) + (alpha * right_term.y)
+        #x = ((1 - alpha) * left_term.x) + (alpha * right_term.x)
+        #y = ((1 - alpha) * left_term.y) + (alpha * right_term.y)
 
-        return Point(x, y)
+        leftArray = np.asarray(left_term)
+        rightArray = np.asarray(right_term)
+
+        p = (1 - alpha) * leftArray + alpha * rightArray
+
+        return p
 
     def getCalcPoints(self):
         calcPoints = []
@@ -148,6 +158,10 @@ class Scene:
     def calcCurve(self):
         #print("Anzahl Punkte: {}, Ordnung {}".format(len(self.controlPoints), self.order))
         self.curvePoints.clear()
+        
+        calcPointList = self.calcPointList()
+        #calcedPoints = self.calcPoints(calcPointList)
+        
         if self.hasEnoughPoints():
             calcPoints = self.getCalcPoints()
             knotVector = self.calcKnotVector()
@@ -162,7 +176,26 @@ class Scene:
                         r = j
                         break
                     
-                self.curvePoints.append(self.deboor(r, self.order-1, calcPoints, knotVector, t))
+                self.curvePoints.append(self.deboor(r, self.order-1, calcPointList, knotVector, t))
+            self.calcCurvePoints()
+
+    def calcPointList(self):
+        calcPointList = []
+        for p in self.controlPoints:
+            calcPointList.append([p.x*p.weight, p.y*p.weight, p.z*p.weight])
+            #calcPointList.append(Point(p.x*p.weight, p.y*p.weight, p.z*p.weight))
+        return calcPointList
+
+    def calcPoints(self, calcPointList):
+        points = []
+        for p in calcPointList:
+            points.append(Point(p.x/p.weight, p.y/p.weight))
+        return calcPointList
+
+    def calcCurvePoints(self):
+        self.curve.clear()
+        for p in self.curvePoints:
+            self.curve.append([p[0] / p[2], p[1] / p[2]])
 
     def render(self):
         glClear(GL_COLOR_BUFFER_BIT)
@@ -180,8 +213,8 @@ class Scene:
             glColor3fv([.7, .7, .7])
             glDrawArrays(GL_LINE_STRIP, 0, len(self.controlPoints))
 
-        if self.curvePoints and self.hasEnoughPoints():
-            vbos = vbo.VBO(np.array(self.curvePoints.array(), 'f'))
+        if self.curve and self.hasEnoughPoints():
+            vbos = vbo.VBO(np.array(self.curve, 'f'))
             vbos.bind()
             glEnableClientState(GL_VERTEX_ARRAY)
             glVertexPointer(2, GL_FLOAT, 0, vbos)
